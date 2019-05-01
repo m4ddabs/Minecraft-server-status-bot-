@@ -22,7 +22,6 @@ function updatePresence(activity, status) {
 function serverQuery() {
     request(url, (error, response, body) => {
       if (error) console.error(error);
-      if (response) console.log(response);
         body = JSON.parse(body);
         if(body.hasOwnProperty('favicon')) {
           updatePresence(`${body.players.now} of ${body.players.max}.`, 'online');
@@ -44,7 +43,7 @@ function serverQuery() {
 client.on('ready', () => {
     console.log('Ready!');
     if (!initialReady) {
-        setInterval(serverQuery, 10000);
+        setInterval(serverQuery, 5*60*1000);
         initialReady = true;
     }
 });
