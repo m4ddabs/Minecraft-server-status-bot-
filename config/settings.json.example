@@ -1,0 +1,5 @@
+{
+    "discord_token": "discord token here",
+    "channel_id": "your channel id here",
+    "server_ip": "ip of the server you want to use the bot for"
+}
