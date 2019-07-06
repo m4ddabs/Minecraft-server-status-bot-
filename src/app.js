@@ -1,14 +1,13 @@
 const Discord = require('discord.js');
-const request = require('request');
+const config = require('../config/settings.json');
+const serverQuery = require('./networking/index.js');
+
 const client = new Discord.Client();
 
-const config = require('../config/settings.json');
-
-const url = `http://mcapi.us/server/status?ip=${config.server_ip}`;
-
-let wasOnline = false;
 let initialReady = false;
-let lastPlayers; 
+
+let serverWasOffline = true;
+let lastPlayers = null;
 
 function updatePresence(activity, status) {
     client.user.setPresence( {
@@ -20,38 +19,40 @@ function updatePresence(activity, status) {
     .catch( err => console.error(err));
 }
 
-function serverQuery() {
-    request(url, (error, response, body) => {
-      if (error) console.error(error);
-        body = JSON.parse(body);
-        if(body.online){
-          if(!wasOnline) {
-            console.log('Server is now online!');
-            const channel = client.channels.find(channel => channel.id === config.channel_id);
-            channel.send('@everyone the server is up.').catch(err => console.error(err));
-            wasOnline = true;
-            lastPlayers = body.players.now;
-            updatePresence(`${body.players.now} of ${body.players.max}.`, 'online');
-          }
-          if(body.players.now === lastPlayers ){
-              break;
-          }else{
-            updatePresence(`${body.players.now} of ${body.players.max}.`, 'online');
-            lastPlayers = body.player.now; 
-          } 
-        } 
-        else {
-            console.log('Server has gone offline!');
-            updatePresence(`Server is offline.`, 'dnd');
-            wasOnline = false;
+function handleServerResponse(response) {
+    if (response.online) {
+        if (serverWasOffline) {
+            console.log(`Server ${config.server_ip} is now online!`);
+            
+            const broadcastChannel = client.channels.find(channel => channel.id === config.channel_id);
+            broadcastChannel
+                .send(`${broadcastChannel.guild.defaultRole}, the server is now online! You can join it from: **${config.server_ip}**`)
+                .catch(err => console.error(err));
+
+            serverWasOffline = false;
+
+            if (lastPlayers !== response.players.now) {
+                lastPlayers = response.players.now;
+                updatePresence(`${response.players.now} of ${response.players.max}`, 'online');
+            }
         }
-    });
+    }
+    else {
+        if (serverWasOffline) {
+            return;
+        }
+
+        console.log(`Server ${config.server_ip} has gone offline!`);
+        updatePresence('Server is offline');
+        serverWasOffline = true;
+    }
 }
 
 client.on('ready', () => {
     console.log('Ready!');
+    serverQuery( res => handleServerResponse(res));
     if (!initialReady) {
-        setInterval(serverQuery, 5*60*1000);
+        setInterval(() => serverQuery( res => handleServerResponse(res)), 5*1000);
         initialReady = true;
     }
 });
