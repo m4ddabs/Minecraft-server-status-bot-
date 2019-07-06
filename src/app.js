@@ -8,6 +8,7 @@ const url = `http://mcapi.us/server/status?ip=${config.server_ip}`;
 
 let wasOnline = false;
 let initialReady = false;
+let lastPlayers; 
 
 function updatePresence(activity, status) {
     client.user.setPresence( {
@@ -23,14 +24,21 @@ function serverQuery() {
     request(url, (error, response, body) => {
       if (error) console.error(error);
         body = JSON.parse(body);
-        if(body.hasOwnProperty('favicon')) {
-          updatePresence(`${body.players.now} of ${body.players.max}.`, 'online');
+        if(body.online){
           if(!wasOnline) {
             console.log('Server is now online!');
             const channel = client.channels.find(channel => channel.id === config.channel_id);
             channel.send('@everyone the server is up.').catch(err => console.error(err));
             wasOnline = true;
+            lastPlayers = body.players.now;
+            updatePresence(`${body.players.now} of ${body.players.max}.`, 'online');
           }
+          if(body.players.now === lastPlayers ){
+              break;
+          }else{
+            updatePresence(`${body.players.now} of ${body.players.max}.`, 'online');
+            lastPlayers = body.player.now; 
+          } 
         } 
         else {
             console.log('Server has gone offline!');
